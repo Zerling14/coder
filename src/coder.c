@@ -36,8 +36,10 @@ int encode(uint32_t code_point, CodeUnit *code_unit)
 		code_unit->length = 0;
 		return -1;
 	}
-	
+	#ifdef CODER_DEBUG
+	printf("encode:\n");
 	print_code_unit (*code_unit);
+	#endif
 	return 0;
 }
 
@@ -47,10 +49,12 @@ uint32_t decode(const CodeUnit *code_unit)
 	for (int i = 0; i < code_unit->length; i++) {
 		tmp = tmp + ((code_unit->code[i] & (((int)pow(2, i == code_unit->length - 1 ? code_unit->length == 1 ? 7 : 6 - i: 6)) - 1)) << (6 * i));
 	}
+	#ifdef CODER_DEBUG
 	printf("decode: %" PRIx32 "\n", tmp);
+	#endif
 	return tmp;
 }
-
+#ifdef CODER_DEBUG
 void print_code_unit(CodeUnit code_unit)
 {
 	printf("bin code:\n");
@@ -62,16 +66,18 @@ void print_code_unit(CodeUnit code_unit)
 		num_bait--;
 		printf(" ");
 	}
+	#ifdef CODER_DEBUG
 	printf("\nlength: %d\n", code_unit.length);
+	#endif
 }
-
+#endif
 int read_next_code_unit(FILE *in, CodeUnit *code_unit)
 {
 	code_unit->length = 0;
 	uint8_t buffer = 0;
-	while (buffer != 0xFF) {
+	while (!feof(in)) {
 		fread(&buffer, 1, 1, in);
-		if (buffer == 0xFF) {
+		if (feof(in)) {
 			rewind(in);     
 			return -1;
 		}
@@ -80,7 +86,6 @@ int read_next_code_unit(FILE *in, CodeUnit *code_unit)
 			num_bait++;
 		}
 		
-		printf("bite: %" PRIx8 "\n", num_bait);
 		if (num_bait == 1) {
 			continue;
 		}
@@ -95,7 +100,7 @@ int read_next_code_unit(FILE *in, CodeUnit *code_unit)
 				code_unit->length++;
 				if (i != num_bait) {
 					fread(&buffer, 1, 1, in);
-					if (buffer == 0xFF) {
+					if (feof(in)) {
 						rewind(in); 
 						return -1;
 					}
@@ -107,60 +112,22 @@ int read_next_code_unit(FILE *in, CodeUnit *code_unit)
 			break;
 		}
 	}
+	#ifdef CODER_DEBUG
 	printf("next_code_unit:\n");
 	print_code_unit (*code_unit);
+	#endif
 	return 0;
 }
 
-int read_next_code_unit_new(FILE *in, CodeUnit *code_unit)
-{
-	code_unit->length = 0;
-	uint8_t buffer = 0;
-	while (buffer != 0xFF) {
-		fread(&buffer, 1, 1, in);
-		if (buffer == 0xFF) {
-			rewind(in);     
-			return -1;
-		}
-		uint8_t num_bait = 0;
-		while (buffer & (1 << (7 - num_bait))) {
-			num_bait++;
-		}
-		
-		printf("bite: %" PRIx8 "\n", num_bait);
-		if (num_bait == 1) {
-			continue;
-		}
-		if (num_bait == 0) {
-			num_bait = 1;
-		}
-		if (num_bait <= MaxCodeLength)
-		{
-			code_unit->length = 0;
-			for (int i = 1; i <= num_bait; i++) {
-				code_unit->code[num_bait - i] = buffer;
-				code_unit->length++;
-				if (i != num_bait) {
-					fread(&buffer, 1, 1, in);
-					if (buffer == 0xFF) {
-						rewind(in); 
-						return -1;
-					}
-					while ((buffer & 0xC0) != 0x80) {
-						fread(&buffer, 1, 1, in);
-					}
-				}
-			}
-			break;
-		}
-	}
-	printf("next_code_unit:\n");
-	print_code_unit (*code_unit);
-	return 0;
-}
 
 int write_code_unit(FILE *out, const CodeUnit *code_unit)
 {
-	
+	for (int i = code_unit->length; i > 0; i--) {
+		fwrite(code_unit->code + i - 1, 1, 1, out);
+	}
+	#ifdef CODER_DEBUG
+	printf("write_code_unit:\n");
+	print_code_unit (*code_unit);
+	#endif
 	return 0;
 }
