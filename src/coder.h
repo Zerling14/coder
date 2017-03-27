@@ -1,6 +1,6 @@
 #ifndef CODER_H
 #define CODER_H 
-
+#include <stdio.h>
 enum {
 	MaxCodeLength = 4
 };
@@ -16,8 +16,8 @@ uint32_t decode(const CodeUnit *code_unit);
 
 void print_code_unit(CodeUnit code_unit);
 
-//int read_next_code_unit(FILE *in, CodeUnit *code_units);
+int read_next_code_unit(FILE *in, CodeUnit *code_units);
 
-//int write_code_unit(FILE *out, const CodeUnit *code_unit);
+int write_code_unit(FILE *out, const CodeUnit *code_unit);
 
 #endif
