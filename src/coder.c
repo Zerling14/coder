@@ -2,7 +2,7 @@
 #include "coder.h"
 #include <stdio.h>
 #include <math.h>
-int encode(uint32_t code_point, CodeUnit *code_unit)
+int encode(const uint32_t code_point, CodeUnit *code_unit)
 {
 	int num_bit = 0;
 	for (uint32_t i = code_point; i > 0; i >>= 1) {
@@ -47,7 +47,9 @@ uint32_t decode(const CodeUnit *code_unit)
 {
 	uint32_t tmp = 0;	
 	for (int i = 0; i < code_unit->length; i++) {
-		tmp = tmp + ((code_unit->code[i] & (((int)pow(2, i == code_unit->length - 1 ? code_unit->length == 1 ? 7 : 6 - i: 6)) - 1)) << (6 * i));
+		tmp = tmp + (
+			(code_unit->code[i]
+				& (((int)pow(2, i == code_unit->length - 1 ? code_unit->length == 1 ? 7 : 6 - i : 6)) - 1)) << (6 * i));
 	}
 	#ifdef CODER_DEBUG
 	printf("decode: %" PRIx32 "\n", tmp);
@@ -71,21 +73,18 @@ void print_code_unit(CodeUnit code_unit)
 	#endif
 }
 #endif
+
 int read_next_code_unit(FILE *in, CodeUnit *code_unit)
 {
 	code_unit->length = 0;
 	uint8_t buffer = 0;
+	int check = 0;
+	fread(&buffer, 1, 1, in);
 	while (!feof(in)) {
-		fread(&buffer, 1, 1, in);
-		if (feof(in)) {
-			rewind(in);     
-			return -1;
-		}
 		uint8_t num_bait = 0;
 		while (buffer & (1 << (7 - num_bait))) {
 			num_bait++;
 		}
-		
 		if (num_bait == 1) {
 			continue;
 		}
@@ -98,27 +97,30 @@ int read_next_code_unit(FILE *in, CodeUnit *code_unit)
 			for (int i = 1; i <= num_bait; i++) {
 				code_unit->code[num_bait - i] = buffer;
 				code_unit->length++;
-				if (i != num_bait) {
-					fread(&buffer, 1, 1, in);
-					if (feof(in)) {
-						rewind(in); 
-						return -1;
-					}
-					while ((buffer & 0xC0) != 0x80) {
-						fread(&buffer, 1, 1, in);
-					}
+				if (i == num_bait) {
+					check = 1;
+					return 0;
+					break;
+				}
+				fread(&buffer, 1, 1, in);
+				if ((buffer & 0xC0) != 0x80) {
+					break;
 				}
 			}
-			break;
+			if (check) {
+				break;		
+			}
 		}
 	}
 	#ifdef CODER_DEBUG
 	printf("next_code_unit:\n");
 	print_code_unit (*code_unit);
 	#endif
+	if (feof(in)) { 
+		return -1;
+	}
 	return 0;
 }
-
 
 int write_code_unit(FILE *out, const CodeUnit *code_unit)
 {
