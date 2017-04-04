@@ -13,24 +13,18 @@ int encode(const uint32_t code_point, CodeUnit *code_unit)
 		code_unit->length = 1;
 	} else if (num_bit <= 11) {
 		code_unit->code[0] = (code_point & 0x3F) | 0x80;
-		code_point >>= 6;
-		code_unit->code[1] = (code_point & 0x1F) | 0xC0;
+		code_unit->code[1] = (code_point >> 6 & 0x1F) | 0xC0;
 		code_unit->length = 2;
 	} else if (num_bit <= 16) {
 		code_unit->code[0] = (code_point & 0x3F) | 0x80;
-		code_point >>= 6;
-		code_unit->code[1] = (code_point & 0x3F) | 0x80;
-		code_point >>= 6;
-		code_unit->code[2] = (code_point & 0xF) | 0xE0;
+		code_unit->code[1] = (code_point >> 6 & 0x3F) | 0x80;
+		code_unit->code[2] = (code_point >> 12 & 0xF) | 0xE0;
 		code_unit->length = 3;
 	} else if (num_bit <= 21) {
 		code_unit->code[0] = (code_point & 0x3F) | 0x80;
-		code_point >>= 6;
-		code_unit->code[1] = (code_point & 0x3F) | 0x80;
-		code_point >>= 6;
-		code_unit->code[2] = (code_point & 0x3F) | 0x80;
-		code_point >>= 6;
-		code_unit->code[3] = (code_point & 0x7) | 0xF0;
+		code_unit->code[1] = (code_point >> 6 & 0x3F) | 0x80;
+		code_unit->code[2] = (code_point >> 12 & 0x3F) | 0x80;
+		code_unit->code[3] = (code_point >> 18 & 0x7) | 0xF0;
 		code_unit->length = 4;
 	} else {
 		code_unit->length = 0;
@@ -78,7 +72,6 @@ int read_next_code_unit(FILE *in, CodeUnit *code_unit)
 {
 	code_unit->length = 0;
 	uint8_t buffer = 0;
-	int check = 0;
 	fread(&buffer, 1, 1, in);
 	while (!feof(in)) {
 		uint8_t num_bait = 0;
@@ -86,6 +79,7 @@ int read_next_code_unit(FILE *in, CodeUnit *code_unit)
 			num_bait++;
 		}
 		if (num_bait == 1) {
+			fread(&buffer, 1, 1, in);
 			continue;
 		}
 		if (num_bait == 0) {
@@ -98,7 +92,6 @@ int read_next_code_unit(FILE *in, CodeUnit *code_unit)
 				code_unit->code[num_bait - i] = buffer;
 				code_unit->length++;
 				if (i == num_bait) {
-					check = 1;
 					return 0;
 					break;
 				}
@@ -106,9 +99,6 @@ int read_next_code_unit(FILE *in, CodeUnit *code_unit)
 				if ((buffer & 0xC0) != 0x80) {
 					break;
 				}
-			}
-			if (check) {
-				break;		
 			}
 		}
 	}

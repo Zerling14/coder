@@ -10,7 +10,7 @@ typedef struct {
 	uint8_t length;
 } CodeUnit;
 
-int encode(uint32_t code_point, CodeUnit *code_unit);
+int encode(const uint32_t code_point, CodeUnit *code_unit);
 
 uint32_t decode(const CodeUnit *code_unit);
 

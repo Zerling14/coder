@@ -33,13 +33,10 @@ int encode_file(const char *in_file_name, const char *out_file_name)
 		return -1;
 	}
 	while (1) {
-		char buffer[8];
-		fgets(buffer, 8, in);
-		if (feof(in)) {
+		uint32_t code_point;
+		if ((fscanf(in, "%" SCNx32, &code_point) == EOF) && feof(in)) {
 			break;
 		}
-		uint32_t code_point;
-		sscanf(buffer, "%" SCNx32, &code_point);
 		CodeUnit code_unit;
 		encode(code_point, &code_unit);
 		write_code_unit(out, &code_unit);
